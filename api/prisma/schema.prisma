@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum UnitSystem {
+  IMPERIAL
+  METRIC
+}
+
+enum MeasurementSource {
+  SELF_REPORTED
+  PROFESSIONAL
+  ESTIMATED
+}
+
+enum GarmentType {
+  TOP
+  BOTTOM
+  DRESS
+  OUTERWEAR
+  SWIMWEAR
+  UNDERWEAR
+  SHOES
+  ACCESSORIES
+}
+
+enum FitRating {
+  TOO_SMALL
+  SLIGHTLY_SMALL
+  PERFECT
+  SLIGHTLY_LARGE
+  TOO_LARGE
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String
+  gender        Gender?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  measurements      UserMeasurement[]
+  size_charts       SizeChart[]
+  recommendations   SizeRecommendation[]
+  feedback          PurchaseFeedback[]
+  brand_calibrations BrandCalibration[]
+}
+
+model UserMeasurement {
+  id              String            @id @default(uuid())
+  user_id         String
+  chest           Decimal?
+  waist           Decimal?
+  hips            Decimal?
+  shoulder_width  Decimal?
+  arm_length      Decimal?
+  inseam          Decimal?
+  neck            Decimal?
+  height_inches   Decimal?
+  weight_lbs      Decimal?
+  unit_system     UnitSystem        @default(IMPERIAL)
+  source          MeasurementSource @default(SELF_REPORTED)
+  recorded_at     DateTime          @default(now())
+  is_current      Boolean           @default(true)
+
+  user            User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recommendations SizeRecommendation[]
+}
+
+model SizeChart {
+  id             String      @id @default(uuid())
+  user_id        String
+  brand_name     String
+  garment_type   GarmentType
+  image_url      String?
+  raw_ocr_text   String?
+  extracted_data Json?
+  source_url     String?
+  created_at     DateTime    @default(now())
+
+  user            User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recommendations SizeRecommendation[]
+}
+
+model SizeRecommendation {
+  id                 String      @id @default(uuid())
+  user_id            String
+  size_chart_id      String
+  measurement_id     String
+  recommended_size   String
+  confidence_score   Decimal
+  fit_notes          Json?
+  created_at         DateTime    @default(now())
+
+  user        User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  size_chart  SizeChart       @relation(fields: [size_chart_id], references: [id], onDelete: Cascade)
+  measurement UserMeasurement @relation(fields: [measurement_id], references: [id], onDelete: Cascade)
+  feedback    PurchaseFeedback[]
+}
+
+model PurchaseFeedback {
+  id                 String      @id @default(uuid())
+  user_id            String
+  recommendation_id  String
+  size_purchased     String
+  overall_fit        FitRating
+  body_part_feedback Json?
+  kept_item          Boolean?
+  notes              String?
+  created_at         DateTime    @default(now())
+
+  user           User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recommendation SizeRecommendation @relation(fields: [recommendation_id], references: [id], onDelete: Cascade)
+}
+
+model BrandCalibration {
+  id           String      @id @default(uuid())
+  user_id      String
+  brand_name   String
+  garment_type String
+  size_offset  Json?
+  confidence   Decimal     @default(0)
+  last_updated DateTime    @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, brand_name, garment_type])
+}
