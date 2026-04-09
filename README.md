@@ -132,8 +132,8 @@ Size charts are inconsistent across brands — a Medium at Zara is not a Medium 
 
 | Ticket | Feature | Status | Notes |
 |--------|---------|--------|-------|
-| `FC-001` | User Registration | ✅ Done | Zod validation, bcrypt hashing, Prisma, JWT |
-| `FC-002` | User Login | ✅ Done | Email/password auth, bcrypt.compare, JWT |
+| `FC-001` | User Registration | ✅ Done | Zod validation, bcrypt hashing, Prisma, JWT on register |
+| `FC-002` | User Login + Auth | ✅ Done | POST /login, GET /me, JWT middleware, validate middleware |
 | `FC-003` | Measurement Input | 🔨 Up Next | Save body measurements tied to auth user |
 | `FC-004` | Measurement Retrieval | ⬜ Planned | GET current measurements |
 | `FC-005` | Size Chart Upload | ⬜ Planned | Image upload → trigger OCR |
@@ -218,29 +218,46 @@ Server runs at `http://localhost:3000`
 
 ```bash
 # register
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "test@gmail.com", "password": "securepass123"}'
+  -d '{"email": "test@example.com", "password": "securepass123", "name": "Test User"}'
 
-# login
-curl -X POST http://localhost:3000/api/auth/login \
+# login → copy the token from the response
+curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "test@gmail.com", "password": "securepass123"}'
+  -d '{"email": "test@example.com", "password": "securepass123"}'
+
+# get current user (paste your token)
+curl http://localhost:3000/api/v1/auth/me \
+  -H "Authorization: Bearer <token>"
 ```
 
 ---
 
 ## API Docs
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/auth/register` | ❌ | Create account |
-| `POST` | `/api/auth/login` | ❌ | Login → JWT token |
-| `POST` | `/api/measurements` | 🔒 JWT | Save body measurements |
-| `GET`  | `/api/measurements` | 🔒 JWT | Get current measurements |
-| `POST` | `/api/size-charts` | 🔒 JWT | Upload size chart image |
-| `GET`  | `/api/recommendations/:id` | 🔒 JWT | Get size recommendation |
-| `POST` | `/api/feedback` | 🔒 JWT | Submit fit feedback |
+### Auth — `/api/v1/auth`
+
+| Method | Endpoint | Auth | Status | Description |
+|--------|----------|------|--------|-------------|
+| `POST` | `/api/v1/auth/register` | ❌ | ✅ Live | Create account, returns JWT |
+| `POST` | `/api/v1/auth/login` | ❌ | ✅ Live | Login → JWT token |
+| `GET`  | `/api/v1/auth/me` | 🔒 JWT | ✅ Live | Get current user (no password) |
+
+### Measurements — `/api/v1/measurements`
+
+| Method | Endpoint | Auth | Status | Description |
+|--------|----------|------|--------|-------------|
+| `POST` | `/api/v1/measurements` | 🔒 JWT | 🔨 Next | Save body measurements |
+| `GET`  | `/api/v1/measurements` | 🔒 JWT | ⬜ Planned | Get current measurements |
+
+### Size Charts & Recommendations
+
+| Method | Endpoint | Auth | Status | Description |
+|--------|----------|------|--------|-------------|
+| `POST` | `/api/v1/size-charts` | 🔒 JWT | ⬜ Planned | Upload size chart image |
+| `GET`  | `/api/v1/recommendations/:id` | 🔒 JWT | ⬜ Planned | Get size recommendation |
+| `POST` | `/api/v1/feedback` | 🔒 JWT | ⬜ Planned | Submit fit feedback |
 
 ---
 
