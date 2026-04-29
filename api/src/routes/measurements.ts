@@ -15,8 +15,7 @@ router.post(
       const measurement = await prisma.userMeasurement.create({
         data: {
           ...req.body,
-          user_id: req.user!.userId
-          ,
+          user_id: req.user!.userId,
         },
       });
       res.status(201).json(measurement);

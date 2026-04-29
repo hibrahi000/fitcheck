@@ -1,18 +1,25 @@
 <!-- markdownlint-disable MD033 MD041 -->
+<div align="center">
+
+<img src="https://socialify.git.ci/Hibrahi000/fitcheck/image?description=1&font=Raleway&language=1&name=1&owner=1&stargazers=1&theme=Dark" alt="FitCheck" width="100%" />
+
+<br /><br />
+
+<strong>Stop guessing your size. Start knowing it.</strong><br />
+<sub>AI-powered fit predictor &nbsp;·&nbsp; learns your body &nbsp;·&nbsp; reads any size chart &nbsp;·&nbsp; tells you exactly what to buy</sub>
+
+<br /><br />
+
 [![FitCheck](https://img.shields.io/badge/FitCheck-AI%20Powered-FF6B35?style=for-the-badge&labelColor=1a1a2e)](https://github.com/Hibrahi000/fitcheck)
 [![Status](https://img.shields.io/badge/Status-In%20Development-00d4aa?style=for-the-badge&labelColor=1a1a2e)](https://github.com/Hibrahi000/fitcheck)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=1a1a2e)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-MIT-e94560?style=for-the-badge&labelColor=1a1a2e)](LICENSE)
-<!-- markdownlint-enable MD033 MD041 -->
 
-# 👕 FitCheck
+<br />
 
-**Stop guessing your size. Start knowing it.**
+[The Problem](#the-problem) &nbsp;·&nbsp; [How It Works](#how-it-works) &nbsp;·&nbsp; [Tech Stack](#tech-stack) &nbsp;·&nbsp; [Architecture](#architecture) &nbsp;·&nbsp; [Project Board](#project-board) &nbsp;·&nbsp; [Getting Started](#getting-started) &nbsp;·&nbsp; [API Docs](#api-docs)
 
-> AI-powered clothing fit predictor that learns your body, reads any size chart, and tells you exactly what to buy.
-
----
-
-[The Problem](#the-problem) · [How It Works](#how-it-works) · [Tech Stack](#tech-stack) · [Architecture](#architecture) · [Project Board](#project-board) · [Getting Started](#getting-started) · [API Docs](#api-docs)
+</div>
 
 ---
 
@@ -23,6 +30,25 @@
 Size charts are inconsistent across brands — a Medium at Zara is not a Medium at H&M. Existing solutions are one-shot predictions with no learning loop. Nobody builds a fit profile that actually gets smarter with every purchase.
 
 **FitCheck fixes that.**
+
+---
+
+<table>
+<tr>
+<td align="center" width="33%">
+<h3>📏 Smart Fit Profile</h3>
+Enter your measurements once. Your profile grows more accurate with every purchase you rate.
+</td>
+<td align="center" width="33%">
+<h3>🤖 OCR Size Charts</h3>
+Screenshot any brand's chart. Tesseract + OpenAI Vision extract the data automatically — no manual input.
+</td>
+<td align="center" width="33%">
+<h3>🔄 Brand Calibration</h3>
+The algorithm recalibrates per brand, per garment type. A Medium at Zara ≠ a Medium at H&M.
+</td>
+</tr>
+</table>
 
 ---
 
@@ -124,6 +150,44 @@ Size charts are inconsistent across brands — a Medium at Zara is not a Medium 
 
 ---
 
+## Project Structure
+
+```text
+api/src/
+├── app.ts                     # Express app factory — middleware stack, route mounts
+├── server.ts                  # Process entry point — binds to PORT
+├── config/
+│   └── prisma.ts              # PrismaClient singleton (globalThis hot-reload safe)
+├── middleware/
+│   ├── auth.middleware.ts     # Bearer token verification, req.user augmentation
+│   └── validate.middleware.ts # Reusable Zod validation middleware factory
+├── routes/
+│   ├── auth.routes.ts         # POST /register, POST /login, GET /me
+│   └── measurements.ts        # POST /measurements (built, pending mount — FC-004)
+├── schema/
+│   ├── auth.schema.ts         # registerSchema, loginSchema + inferred types
+│   └── measurements.schema.ts # createMeasurementSchema with at-least-one refine
+├── controllers/               # (planned) thin handlers delegating to services
+├── services/                  # (planned) business logic layer
+└── types/                     # (planned) shared TypeScript interfaces
+```
+
+---
+
+## Security Decisions
+
+Deliberate choices made in the auth layer — not accidental:
+
+| Decision | Where | Why |
+|----------|-------|-----|
+| Generic login error message | `POST /login` | Prevents user enumeration — attacker can't tell if an email is registered |
+| Prisma `select` over fetch-then-strip | `GET /me` | `password_hash` is never fetched from the DB at all, not just hidden from the response |
+| bcrypt cost factor 10 | `SALT_ROUNDS = 10` | 2^10 rounds — industry default balancing brute-force resistance and server latency |
+| Minimal JWT payload | `{ userId, email }` only | JWT payloads are base64-encoded, not encrypted — sensitive fields never go in |
+| `TokenExpiredError` vs `JsonWebTokenError` | `auth.middleware.ts` | Clients know whether to re-authenticate (expired) or treat the token as tampered (invalid) |
+
+---
+
 ## Project Board
 
 > Tracking development across 3 sprints. Each ticket follows `FC-XXX` naming.
@@ -134,11 +198,11 @@ Size charts are inconsistent across brands — a Medium at Zara is not a Medium 
 |--------|---------|--------|-------|
 | `FC-001` | User Registration | ✅ Done | Zod validation, bcrypt hashing, Prisma, JWT on register |
 | `FC-002` | User Login + Auth | ✅ Done | POST /login, GET /me, JWT middleware, validate middleware |
-| `FC-003` | Measurement Input | 🔨 Up Next | Save body measurements tied to auth user |
-| `FC-004` | Measurement Retrieval | ⬜ Planned | GET current measurements |
-| `FC-005` | Size Chart Upload | ⬜ Planned | Image upload → trigger OCR |
-| `FC-006` | OCR Processing | ⬜ Planned | Tesseract + OpenAI Vision pipeline |
-| `FC-007` | Size Chart Parsing | ⬜ Planned | Raw OCR → structured size data |
+| `FC-003` | Auth Middleware & Schema Layer | ✅ Done | authenticate, validate factory, measurement schema |
+| `FC-004` | Measurement Input | 🔨 Up Next | Handler built — needs mounting in app.ts + integration test |
+| `FC-005` | Measurement Retrieval | ⬜ Planned | GET current measurements for authed user |
+| `FC-006` | Size Chart Upload | ⬜ Planned | Image upload → trigger OCR |
+| `FC-007` | OCR Processing | ⬜ Planned | Tesseract + OpenAI Vision pipeline |
 | `FC-008` | Size Recommendation | ⬜ Planned | Compare measurements to chart → result |
 
 ### 🏃 Sprint 2 — Feedback Loop
@@ -214,6 +278,14 @@ npm run dev
 
 Server runs at `http://localhost:3000`
 
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string — `postgresql://user:pass@host:5432/fitcheck` |
+| `JWT_SECRET` | ✅ | Secret key for signing and verifying JWTs — use a long random string in production |
+| `PORT` | ❌ | HTTP port the server listens on (default: `3000`) |
+
 ### Quick Test
 
 ```bash
@@ -248,7 +320,7 @@ curl http://localhost:3000/api/v1/auth/me \
 
 | Method | Endpoint | Auth | Status | Description |
 |--------|----------|------|--------|-------------|
-| `POST` | `/api/v1/measurements` | 🔒 JWT | 🔨 Next | Save body measurements |
+| `POST` | `/api/v1/measurements` | 🔒 JWT | 🔨 In Progress | Handler built, mounting in FC-004 |
 | `GET`  | `/api/v1/measurements` | 🔒 JWT | ⬜ Planned | Get current measurements |
 
 ### Size Charts & Recommendations
@@ -265,21 +337,42 @@ curl http://localhost:3000/api/v1/auth/me \
 
 Some of the things that clicked while building FitCheck from scratch:
 
-- **`safeParse` vs `parse` in Zod** — safeParse returns errors gracefully which is what you want in production. parse just throws and crashes your server if validation fails.
+- **`safeParse` vs `parse` in Zod** — `safeParse` returns errors gracefully, which is what you want in production. `parse` throws and will crash your server if validation fails without a try/catch.
 
-- **Express hangs if you don't end the response cycle** — returning a value from your route handler is not the same as calling `res.json()`. Without `res.json()` or `res.send()`, the HTTP connection just sits there waiting forever.
+- **Express hangs if you don't end the response cycle** — returning a value from a route handler is not the same as calling `res.json()`. Without it, the HTTP connection sits open waiting forever.
 
 - **Every Prisma call needs `await`** — forgot this once and the query never executed. Express hung because it was waiting for data that never came back from the database.
 
-- **`bcrypt.compare` fails silently on unhashed passwords** — if your registration route isn't actually hashing before saving to the database, login will always fail and you'll spend 20 minutes wondering why.
+- **`bcrypt.compare` fails silently on unhashed passwords** — if your registration route isn't actually hashing before saving, login will always fail and you'll spend 20 minutes wondering why.
 
 - **`ts-node-dev --respawn --transpile-only`** — hot reloading for TypeScript dev. Never manually `npm run build && npm run start` during development again.
+
+- **Generic error messages prevent user enumeration** — `/login` returns `"Invalid email or password"` whether the email doesn't exist or the password is wrong. Returning different messages would let an attacker discover which emails are registered. One condition, one message.
+
+- **`declare global namespace Express` for typed middleware** — to make `req.user` available downstream without TypeScript errors, you augment Express's `Request` interface via module declaration. Without it you're casting `req as any` everywhere, which defeats the point of TypeScript.
+
+- **`globalThis` prevents Prisma connection pool exhaustion in dev** — `ts-node-dev` re-evaluates modules on every hot-reload. Without caching `PrismaClient` on `globalThis`, each reload opens a new connection pool and silently leaks database connections until Postgres refuses new ones.
 
 ---
 
 ## Author
 
+<div align="center">
+
 **Hashmat Ibrahimi** — Backend engineer, 6+ years building production APIs and GraphQL platforms.
+
+<br />
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/hashmat-ibrahimi)
 [![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:Hashmat.ibrahimi.21@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Hibrahi000/fitcheck)
+
+<br />
+
+<a href="https://github.com/Hibrahi000/fitcheck">
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Fgithub.com%2FHibrahi000%2Ffitcheck&color=FF6B35&bgcolor=1a1a2e&margin=10" alt="Scan to open repo on mobile" />
+</a>
+
+<sub>Scan to open on mobile</sub>
+
+</div>
