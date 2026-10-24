@@ -89,8 +89,6 @@ The algorithm recalibrates per brand, per garment type. A Medium at Zara ≠ a M
 
 ### 🧠 OCR / AI
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![Tesseract](https://img.shields.io/badge/Tesseract_OCR-4285F4?style=flat-square&logo=google&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI_Vision-412991?style=flat-square&logo=openai&logoColor=white)
 
@@ -99,7 +97,6 @@ The algorithm recalibrates per brand, per garment type. A Medium at Zara ≠ a M
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 ![Jest](https://img.shields.io/badge/Jest-C21325?style=flat-square&logo=jest&logoColor=white)
-![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
 
 ---
 
@@ -133,8 +130,8 @@ The algorithm recalibrates per brand, per garment type. A Medium at Zara ≠ a M
                        │ image upload
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│                   OCR SERVICE                       │
-│               Python + FastAPI                      │
+│                OCR INGESTION PIPELINE               │
+│            Tesseract OCR + OpenAI Vision            │
 │                                                     │
 │   [ Tesseract ] ──→ [ OpenAI Vision (fallback) ]    │
 │         │                    │                      │
@@ -333,25 +330,17 @@ curl http://localhost:3000/api/v1/auth/me \
 
 ---
 
-## What I Learned Building This
+## Engineering & Architecture Notes
 
-Some of the things that clicked while building FitCheck from scratch:
+Key implementation patterns enforced across the backend API:
 
-- **`safeParse` vs `parse` in Zod** — `safeParse` returns errors gracefully, which is what you want in production. `parse` throws and will crash your server if validation fails without a try/catch.
+- **Non-throwing schema validation (`safeParse` middleware factory)** — `validate.middleware.ts` wraps Zod's `safeParse` in a higher-order Express middleware factory rather than calling `.parse()` inside controllers. Invalid payloads short-circuit at the routing boundary with structured `400 Bad Request` field-level diagnostics before controller logic or database connections are invoked.
 
-- **Express hangs if you don't end the response cycle** — returning a value from a route handler is not the same as calling `res.json()`. Without it, the HTTP connection sits open waiting forever.
+- **Strict TypeScript module augmentation (`declare global namespace Express`)** — Rather than casting `req as any` across protected routes, `auth.middleware.ts` extends `Express.Request` at the compiler level so `req.user` (`{ userId, email }`) is strictly typed across all downstream handlers.
 
-- **Every Prisma call needs `await`** — forgot this once and the query never executed. Express hung because it was waiting for data that never came back from the database.
+- **Hot-reload connection pool safety (`globalThis` Prisma singleton)** — `ts-node-dev` re-evaluates module imports on every file change during local development. Caching the `PrismaClient` instance on `globalThis` in `config/prisma.ts` prevents connection pool exhaustion against PostgreSQL across hot reloads while maintaining a clean single-instance initialization in production.
 
-- **`bcrypt.compare` fails silently on unhashed passwords** — if your registration route isn't actually hashing before saving, login will always fail and you'll spend 20 minutes wondering why.
-
-- **`ts-node-dev --respawn --transpile-only`** — hot reloading for TypeScript dev. Never manually `npm run build && npm run start` during development again.
-
-- **Generic error messages prevent user enumeration** — `/login` returns `"Invalid email or password"` whether the email doesn't exist or the password is wrong. Returning different messages would let an attacker discover which emails are registered. One condition, one message.
-
-- **`declare global namespace Express` for typed middleware** — to make `req.user` available downstream without TypeScript errors, you augment Express's `Request` interface via module declaration. Without it you're casting `req as any` everywhere, which defeats the point of TypeScript.
-
-- **`globalThis` prevents Prisma connection pool exhaustion in dev** — `ts-node-dev` re-evaluates modules on every hot-reload. Without caching `PrismaClient` on `globalThis`, each reload opens a new connection pool and silently leaks database connections until Postgres refuses new ones.
+- **Zero-leak authentication responses** — `/login` enforces identical error semantics (`"Invalid email or password"`) across both missing-account and bad-credential states to prevent user enumeration, while `GET /me` uses explicit Prisma `select` projections so `password_hash` never crosses the database wire.
 
 ---
 
@@ -359,10 +348,11 @@ Some of the things that clicked while building FitCheck from scratch:
 
 <div align="center">
 
-**Hashmat Ibrahimi** — Backend engineer, 6+ years building production APIs and GraphQL platforms.
+**Hashmat Ibrahimi** — Backend & Full-Stack Engineer, 7+ years building production APIs and GraphQL platforms.
 
 <br />
 
+[![Portfolio](https://img.shields.io/badge/Portfolio-0071E3?style=for-the-badge&logo=safari&logoColor=white)](https://hibrahi000.github.io)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/hashmat-ibrahimi)
 [![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:Hashmat.ibrahimi.21@gmail.com)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Hibrahi000/fitcheck)
